@@ -12,14 +12,14 @@ struct PyFileGenerator: CommandPlugin {
         let targetDir = if let firstArgument {
             URL(filePath: firstArgument)
         } else {
-            URL(filePath: context.package.directory.string)
+            URL(filePath: context.package.directory.string).appending(path: "src")
         }
         
-        let src = targetDir.appending(path: "src")
-        if !fm.fileExists(atPath: src.path()) {
-            try fm.createDirectory(at: src, withIntermediateDirectories: true)
+        //let src = targetDir.appending(path: "src")
+        if !fm.fileExists(atPath: targetDir.path()) {
+            try fm.createDirectory(at: targetDir, withIntermediateDirectories: true)
         }
-        print("PyFileGenerator:", src)
+        print("PyFileGenerator:", targetDir)
         for product in context.package.products {
             for source in product.sourceModules {
                 
@@ -31,7 +31,7 @@ struct PyFileGenerator: CommandPlugin {
                 try await Process.GenerateModule(
                     tool: .init(filePath: try context.tool(named: "Generator").path.string),
                     files: swiftFiles,
-                    output: src.path(),
+                    output: targetDir.path(),
                     notoml: firstArgument != nil
                 )
 //                    try! Process.run(.init(filePath: "/Users/codebuilder/.swiftpm/bin/PyAstParser"), arguments: [
