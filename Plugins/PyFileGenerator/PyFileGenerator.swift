@@ -10,7 +10,7 @@ extension String {
         self == "--target"
     }
     var notTarget: Bool {
-        self == "--target"
+        self != "--target"
     }
 }
 
