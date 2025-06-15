@@ -13,7 +13,7 @@ extension ModuleGenerator {
     
     struct SetupPy: AsyncParsableCommand {
         @Argument var files: [Path]
-        @Option var destination: Path?
+        @Option(name: .long) var destination: Path?
         
         
         func run() async throws {

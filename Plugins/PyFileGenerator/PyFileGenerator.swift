@@ -8,8 +8,10 @@ let fm = FileManager.default
 struct PyFileGenerator: CommandPlugin {
     // Entry point for command plugins applied to Swift Packages.
     func performCommand(context: PluginContext, arguments: [String]) async throws {
-        let firstArgument = arguments.first
-        let targetDir = if let firstArgument {
+        var firstArgument = arguments.first
+        
+        
+        let targetDir = if let firstArgument, firstArgument != "--target" {
             URL(filePath: firstArgument)
         } else {
             URL(filePath: context.package.directory.string).appending(path: "src")

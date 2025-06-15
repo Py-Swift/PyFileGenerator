@@ -8,8 +8,11 @@ struct SetupPyGenerator: CommandPlugin {
     // Entry point for command plugins applied to Swift Packages.
     func performCommand(context: PluginContext, arguments: [String]) async throws {
         
-        guard let src = arguments.first else { return }
+        guard var src = arguments.first else { return }
         
+        if src == "--target" {
+            src = "./"
+        }
         for product in context.package.products {
             for source in product.sourceModules {
                 
@@ -49,13 +52,13 @@ extension Process {
         
         var arguments: [String] = ["setup-py"]
         arguments.append(contentsOf: files + [
-            "--output",
+            "--destination",
             output
         ])
         proc.arguments = arguments
-        print("running PyAstParser", files)
+        print("SetupPyGenerator PyAstParser", arguments)
         try proc.run()
         proc.waitUntilExit()
-        print("finished PyAstParser", files)
+        print("finished SetupPyGenerator", files)
     }
 }
