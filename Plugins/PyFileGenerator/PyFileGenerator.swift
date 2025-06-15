@@ -4,17 +4,39 @@ import Foundation
 
 
 let fm = FileManager.default
+
+extension String {
+    var isTarget: Bool {
+        self == "--target"
+    }
+    var notTarget: Bool {
+        self == "--target"
+    }
+}
+
+
 @main
 struct PyFileGenerator: CommandPlugin {
     // Entry point for command plugins applied to Swift Packages.
     func performCommand(context: PluginContext, arguments: [String]) async throws {
         var firstArgument = arguments.first
+        let targetDir: URL
         
         
-        let targetDir = if let firstArgument, firstArgument != "--target" {
-            URL(filePath: firstArgument)
+        let notoml = if let firstArgument {
+            if firstArgument.isTarget {
+                false
+            } else {
+                true
+            }
         } else {
-            URL(filePath: context.package.directory.string).appending(path: "src")
+            true
+        }
+        
+        if let firstArgument, firstArgument.notTarget {
+            targetDir = URL(filePath: firstArgument)
+        } else {
+            targetDir = URL(filePath: context.package.directory.string).appending(path: "src")
         }
         
         //let src = targetDir.appending(path: "src")
@@ -34,7 +56,7 @@ struct PyFileGenerator: CommandPlugin {
                     tool: .init(filePath: try context.tool(named: "Generator").path.string),
                     files: swiftFiles,
                     output: targetDir.path(),
-                    notoml: firstArgument != nil
+                    notoml: notoml
                 )
 //                    try! Process.run(.init(filePath: "/Users/codebuilder/.swiftpm/bin/PyAstParser"), arguments: [
 //                        file.path.string,

@@ -109,6 +109,9 @@ extension ModuleGenerator {
                 let module_name = py_module.name.text.camelCaseToSnakeCase()
                 let dest = (output + "\(module_name).py")
                 //            print("PyAstParser:",dest)
+                if !output.exists {
+                    try output.mkpath()
+                }
                 try dest.write(py_code, encoding: .utf8)
                 if !notoml {
                     let toml_path = output + "../pyproject.toml"
