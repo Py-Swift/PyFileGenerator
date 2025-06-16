@@ -15,7 +15,7 @@ func identifierTypeAsExpr(_ t: IdentifierTypeSyntax) -> Generator.ExprProtocol {
     case .Int, .Int32, .Int16, .Int8, .UInt, .UInt32, .UInt16, .UInt8:
         Generator.TypeAnnotation(name: "int")
     case .Float, .Double:
-        Generator.TypeAnnotation(name: "int")
+        Generator.TypeAnnotation(name: "float")
     case .Bool:
         Generator.TypeAnnotation(name: "bool")
     case .String:
@@ -260,7 +260,12 @@ extension Generator.Function {
     init(syntax: FunctionDeclSyntax, indent: Int, no_self: Bool = true) {
         let signature = syntax.signature
         self.indent = indent
+        var no_self = no_self
         name = syntax.name.text
+        if !no_self {
+            decorators = syntax.isStatic ? ["@staticmethod"] : []
+            no_self = syntax.isStatic
+        }
         arguments = .init(syntax: signature.parameterClause.parameters, no_self: no_self)
         return_type = if let returnClause = signature.returnClause {
             typeSyntaxAsExpr(returnClause.type)

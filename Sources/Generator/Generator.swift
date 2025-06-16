@@ -88,7 +88,7 @@ extension Generator {
         var name: String
         var arguments: Arguments
         var return_type: ExprProtocol?
-        
+        var decorators: [String]?
         
         struct Arguments: CustomStringConvertible{
             var arguments: [Argument]
@@ -123,9 +123,18 @@ extension Generator {
         
         var description: String {
             let returning = if let return_type {" -> \(return_type)"} else {""}
-            return """
-            def \(name)\(arguments)\(returning): ...
-            """
+            if let decorators, decorators.count > 0 {
+                let decorators = decorators.joined(separator: "\n\(indented())")
+                
+                return """
+                \(decorators)
+                \(indented())def \(name)\(arguments)\(returning): ...
+                """
+            } else {
+                return """
+                def \(name)\(arguments)\(returning): ...
+                """
+            }
         }
     }
     

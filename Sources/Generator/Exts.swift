@@ -48,6 +48,9 @@ extension FunctionDeclSyntax {
     var isPyFunction: Bool { attributes.isPyFunction }
     var isPyMethod: Bool { attributes.isPyMethod }
     var isPyCall: Bool { attributes.isPyCall }
+    var isStatic: Bool {
+        modifiers.contains(where: { $0.name.text == "static" })
+    }
 }
 
 extension VariableDeclSyntax {
