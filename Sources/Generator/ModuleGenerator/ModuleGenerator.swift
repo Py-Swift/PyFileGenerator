@@ -139,7 +139,7 @@ public extension Array where Element == PathKit.Path {
             case .decl(let declSyntax):
                 switch declSyntax.as(DeclSyntaxEnum.self) {
                 case .classDecl(let classDecl):
-                    if classDecl.attributes.contains(where: {["@PyClass"].contains($0.trimmedDescription)})
+                    if classDecl.attributes.contains(where: {$0.isPyClass})
                     {
                         return .init(classDecl)
                     }
