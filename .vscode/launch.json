@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:PyFileGenerator}",
+            "name": "Debug Generator",
+            "target": "Generator",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug Generator"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:PyFileGenerator}",
+            "name": "Release Generator",
+            "target": "Generator",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release Generator"
+        }
+    ]
+}

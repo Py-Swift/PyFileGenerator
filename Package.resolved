@@ -10,12 +10,30 @@
       }
     },
     {
+      "identity" : "pyswiftast",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Py-Swift/PySwiftAST",
+      "state" : {
+        "branch" : "master",
+        "revision" : "9c6af68882d5d9f352bbba7b60baa16b717b0219"
+      }
+    },
+    {
       "identity" : "spectre",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/kylef/Spectre.git",
       "state" : {
         "revision" : "26cc5e9ae0947092c7139ef7ba612e34646086c7",
         "version" : "0.10.1"
+      }
+    },
+    {
+      "identity" : "swift-algorithms",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-algorithms",
+      "state" : {
+        "revision" : "87e50f483c54e6efd60e885f7f5aa946cee68023",
+        "version" : "1.2.1"
       }
     },
     {
@@ -28,12 +46,21 @@
       }
     },
     {
+      "identity" : "swift-numerics",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-numerics.git",
+      "state" : {
+        "revision" : "0c0290ff6b24942dadb83a929ffaaa1481df04a2",
+        "version" : "1.1.1"
+      }
+    },
+    {
       "identity" : "swift-syntax",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/swiftlang/swift-syntax.git",
       "state" : {
-        "revision" : "0687f71944021d616d34d922343dcef086855920",
-        "version" : "600.0.1"
+        "revision" : "f99ae8aa18f0cf0d53481901f88a0991dc3bd4a2",
+        "version" : "601.0.1"
       }
     }
   ],

@@ -142,50 +142,50 @@ func declSyntaxAsStatement(_ decl: DeclSyntax, indent: Int, cls: Bool) -> Genera
     }
 }
 
-fileprivate class PyClassByExtensionUnpack {
-    
-    //var unretained = false
-    var functions: [FunctionDeclSyntax] = []
-    var properties: [VariableDeclSyntax] = []
-    //var type: TypeSyntax
-    
-    init(arguments: LabeledExprListSyntax) throws {
-        for argument in arguments {
-            guard let label = argument.label else { continue }
-            switch argument.label?.text {
-            case "expr":
-                if let expr = argument.expression.as(StringLiteralExprSyntax.self) {
-                    let statements = Parser.parse(source: expr.segments.description).statements
-                    let funcDecls = statements.compactMap { blockItem in
-                        let item = blockItem.item
-                        return switch item.kind {
-                        case .functionDecl: item.as(FunctionDeclSyntax.self)
-                        default: nil
-                        }
-                    }
-                    functions = funcDecls
-                    
-                    let varDecls = statements.compactMap { blockItem in
-                        let item = blockItem.item
-                        return switch item.kind {
-                        case .variableDecl: item.as(VariableDeclSyntax.self)
-                        default: nil
-                        }
-                    }
-                    properties = varDecls
-                }
-            
-            default: continue
-            }
-        
-        }
-        
-    }
-    
-    struct ArgError: Error {
-        
-    }
-}
+//fileprivate class PyClassByExtensionUnpack {
+//    
+//    //var unretained = false
+//    var functions: [FunctionDeclSyntax] = []
+//    var properties: [VariableDeclSyntax] = []
+//    //var type: TypeSyntax
+//    
+//    init(arguments: LabeledExprListSyntax) throws {
+//        for argument in arguments {
+//            guard let label = argument.label else { continue }
+//            switch argument.label?.text {
+//            case "expr":
+//                if let expr = argument.expression.as(StringLiteralExprSyntax.self) {
+//                    let statements = Parser.parse(source: expr.segments.description).statements
+//                    let funcDecls = statements.compactMap { blockItem in
+//                        let item = blockItem.item
+//                        return switch item.kind {
+//                        case .functionDecl: item.as(FunctionDeclSyntax.self)
+//                        default: nil
+//                        }
+//                    }
+//                    functions = funcDecls
+//                    
+//                    let varDecls = statements.compactMap { blockItem in
+//                        let item = blockItem.item
+//                        return switch item.kind {
+//                        case .variableDecl: item.as(VariableDeclSyntax.self)
+//                        default: nil
+//                        }
+//                    }
+//                    properties = varDecls
+//                }
+//            
+//            default: continue
+//            }
+//        
+//        }
+//        
+//    }
+//    
+//    struct ArgError: Error {
+//        
+//    }
+//}
 
 extension Generator.Module {
     init(syntax: SourceFileSyntax) {

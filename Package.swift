@@ -22,8 +22,10 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "601.0.0"),
+        .package(url: "https://github.com/Py-Swift/PySwiftAST", branch: "master"),
         .package(url: "https://github.com/kylef/PathKit", .upToNextMajor(from: "1.0.1")),
         .package(url: "https://github.com/apple/swift-argument-parser", from: .init(1, 2, 0)),
+        
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -71,7 +73,10 @@ let package = Package(
                 .product(name: "SwiftSyntax", package: "swift-syntax"),
                 .product(name: "SwiftParser", package: "swift-syntax"),
                 "PathKit",
-                
+                .product(name: "PySwiftAST", package: "PySwiftAST"),
+                .product(name: "PySwiftCodeGen", package: "PySwiftAST"),
+                .product(name: "PyAstVisitors", package: "PySwiftAST"),
+                .product(name: "PyFormatters", package: "PySwiftAST"),
             ]
         )
     ]
