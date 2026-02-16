@@ -9,7 +9,7 @@ import PathKit
 import SwiftSyntax
 import SwiftParser
 import PySwiftAST
-
+import PySwift2Python
 
 enum PyModuleInfoKey: String {
     case py_classes
@@ -41,247 +41,269 @@ extension ModuleGenerator {
         func run() async throws {
             guard let output else { return }
             
-            let decls = files.declSyntax()
+            let handleFiles = try HandleFiles(files: files)
             
-            var py_classes = [ClassDeclSyntax]()
-            var py_classes_ext = [ExtensionDeclSyntax]()
-            var py_containers = [ClassDeclSyntax]()
-            var py_modules = [StructDeclSyntax]()
-            
-            
-            for decl in decls {
-                switch decl.as(DeclSyntaxEnum.self) {
-                    case .classDecl(let classDeclSyntax):
-                        guard classDeclSyntax.isPyClass else { continue }
-                        py_classes.append(classDeclSyntax)
-                    case .extensionDecl(let extensionDeclSyntax):
-                        guard extensionDeclSyntax.isPyClassExt else { continue }
-                        py_classes_ext.append(extensionDeclSyntax)
-                    case .structDecl(let structDeclSyntax):
-                        guard structDeclSyntax.isPyModule else { continue }
-                        py_modules.append(structDeclSyntax)
-                    default:
-                        continue
-                }
+            guard let package_name = handleFiles.outputs.first?.name else {
+                return
             }
             
-            guard let package_name = py_modules.first?.name.text.camelCaseToSnakeCase() else { return }
-            
-            for py_module in py_modules {
-                var included_classes: [ClassDeclSyntax] = []
-                var included_classes_ext: [ExtensionDeclSyntax] = []
-                for member in py_module.memberBlock.members {
-                    switch member.decl.as(DeclSyntaxEnum.self) {
-                        case .variableDecl(let variableDecl):
-                            if let binding = variableDecl.bindings.first {
-                                switch binding.initializer?.value.as(ExprSyntaxEnum.self) {
-                                    case .arrayExpr(let arrayExpr):
-                                        switch binding.pattern.as(PatternSyntaxEnum.self) {
-                                            case .expressionPattern(let expressionPattern):
-                                                break
-                                            case .identifierPattern(let identifierPattern):
-                                                
-                                                guard let infoKey = PyModuleInfoKey(rawValue: identifierPattern.identifier.trimmed.text) else {
-                                                    break
-                                                }
-                                                
-                                                switch infoKey {
-                                                    case .py_classes:
-                                                        let classes = arrayExpr.elements.compactMap { element in
-                                                            switch element.expression.as(ExprSyntaxEnum.self) {
-                                                                case .memberAccessExpr(let memberAccessExpr):
-                                                                    switch memberAccessExpr.base?.as(ExprSyntaxEnum.self) {
-                                                                        case .declReferenceExpr(let declReferenceExpr):
-                                                                            return py_classes.first { cls in
-                                                                                cls.name.trimmedDescription == declReferenceExpr.baseName.text
-                                                                            }
-                                                                        default: return nil
-                                                                    }
-                                                                default: return nil
-                                                            }
-                                                        }
-                                                        included_classes.append(contentsOf: classes)
-                                                        let classes_ext = arrayExpr.elements.compactMap { element in
-                                                            switch element.expression.as(ExprSyntaxEnum.self) {
-                                                                case .memberAccessExpr(let memberAccessExpr):
-                                                                    switch memberAccessExpr.base?.as(ExprSyntaxEnum.self) {
-                                                                        case .declReferenceExpr(let declReferenceExpr):
-                                                                            return py_classes_ext.first { cls in
-                                                                                cls.extendedType.trimmedDescription == declReferenceExpr.baseName.text
-                                                                            }
-                                                                        default: return nil
-                                                                    }
-                                                                default: return nil
-                                                            }
-                                                        }
-                                                        included_classes_ext.append(contentsOf: classes_ext)
-                                                    case .py_modules:
-                                                        break
-                                                    case .pyserializableTypes:
-                                                        let pyserializableTypes: [PySerializableInfo] = arrayExpr.elements.compactMap { element in
-                                                            switch element.expression.as(ExprSyntaxEnum.self) {
-                                                                case .tupleExpr(let tupleExpr):
-                                                                    let tElements = tupleExpr.elements.map(\.expression)
-                                                                    if
-                                                                        tElements.count == 2,
-                                                                        let swiftType = tElements[0].as(MemberAccessExprSyntax.self)?.base?.trimmedDescription,
-                                                                        let pyType = tElements[1].as(StringLiteralExprSyntax.self)?.segments.trimmedDescription
-                                                                    {
-                                                                        return .init(
-                                                                            swiftType: swiftType,
-                                                                            pyType: pyType
-                                                                        )
-                                                                    }
-                                                                    break
-                                                                default: break
-                                                            }
-                                                            return nil
-                                                        }
-                                                        pyserializableTypes.forEach(PySerializableFactory.registerType)
-                                                }
-                                            default: break
-                                        }
-                                    default: break
-                                }
-                            }
-                            
-                        default: break
-                    }
-                }
-                
-                let module = try PySwiftAST.Module(
-                    syntax: py_module,
-                    classes: included_classes,
-                    classes_ext: included_classes_ext
-                )
-//                let module = Generator.Module(
-//                    syntax: py_module,
-//                    classes: included_classes.filter(\.isPyClass),
-//                    classes_ext: included_classes_ext.filter(\.isPyClassExt)
-//                )
-                let py_code = module.description.replacingOccurrences(of: "    ", with: "\t")
-                //            let py_code = try Decompiler().decompile(ast: ast_module)
-                let module_name = py_module.name.text.camelCaseToSnakeCase()
-                let dest = (output + "\(module_name).py")
-                //            print("PyAstParser:",dest)
+            for file in handleFiles.outputs {
+                let dest = (output + "\(file.name).py")
                 if !output.exists {
                     try output.mkpath()
                 }
-                try dest.write(disclaimed(py_code), encoding: .utf8)
-                
+                try dest.write(disclaimed(file.content), encoding: .utf8)
             }
             if !notoml {
                 let toml_path = output + "../pyproject.toml"
                 try toml_path.write(toml_file(name: package_name), encoding: .utf8)
             }
         }
-        
-        
-        func __run() async throws {
-            guard let output else { return }
-            
-            let decls = files.declSyntax()
-            
-            let py_classes = decls.compactMap { decl in
-                switch decl.as(DeclSyntaxEnum.self) {
-                case .classDecl(let classDecl):
-                    classDecl
-                default: nil
-                }
-            }
-            
-            let py_classes_ext = decls.compactMap { decl in
-                switch decl.as(DeclSyntaxEnum.self) {
-                case .extensionDecl(let extensionDecl):
-                    extensionDecl
-                default: nil
-                }
-            }
-            
-            let py_modules = decls.compactMap { decl in
-                switch decl.as(DeclSyntaxEnum.self) {
-                case .structDecl(let structDecl):
-                    structDecl
-                default: nil
-                }
-            }
-            
-            
-            
-            
-            for py_module in py_modules {
-                var included_classes: [ClassDeclSyntax] = []
-                var included_classes_ext: [ExtensionDeclSyntax] = []
-                for member in py_module.memberBlock.members {
-                    switch member.decl.as(DeclSyntaxEnum.self) {
-                    case .variableDecl(let variableDecl):
-                        if let binding = variableDecl.bindings.first {
-                            switch binding.initializer?.value.as(ExprSyntaxEnum.self) {
-                            case .arrayExpr(let arrayExpr):
-                                switch binding.pattern.as(PatternSyntaxEnum.self) {
-                                case .expressionPattern(let expressionPattern):
-                                    break
-                                case .identifierPattern(let identifierPattern):
-                                    if identifierPattern.identifier.trimmed.text == "py_classes" {
-                                        let classes = arrayExpr.elements.compactMap { element in
-                                            switch element.expression.as(ExprSyntaxEnum.self) {
-                                            case .memberAccessExpr(let memberAccessExpr):
-                                                switch memberAccessExpr.base?.as(ExprSyntaxEnum.self) {
-                                                case .declReferenceExpr(let declReferenceExpr):
-                                                    return py_classes.first { cls in
-                                                        cls.name.trimmedDescription == declReferenceExpr.baseName.text
-                                                    }
-                                                default: return nil
-                                                }
-                                            default: return nil
-                                            }
-                                        }
-                                        included_classes.append(contentsOf: classes)
-                                        let classes_ext = arrayExpr.elements.compactMap { element in
-                                            switch element.expression.as(ExprSyntaxEnum.self) {
-                                            case .memberAccessExpr(let memberAccessExpr):
-                                                switch memberAccessExpr.base?.as(ExprSyntaxEnum.self) {
-                                                case .declReferenceExpr(let declReferenceExpr):
-                                                    return py_classes_ext.first { cls in
-                                                        cls.extendedType.trimmedDescription == declReferenceExpr.baseName.text
-                                                    }
-                                                default: return nil
-                                                }
-                                            default: return nil
-                                            }
-                                        }
-                                        included_classes_ext.append(contentsOf: classes_ext)
-                                    }
-                                default: break
-                                }
-                            default: break
-                            }
-                        }
-                        
-                    default: break
-                    }
-                }
-                let module = Generator.Module(
-                    syntax: py_module,
-                    classes: included_classes.filter(\.isPyClass),
-                    classes_ext: included_classes_ext.filter(\.isPyClassExt)
-                )
-                let py_code = module.description.replacingOccurrences(of: "    ", with: "\t")
-                //            let py_code = try Decompiler().decompile(ast: ast_module)
-                let module_name = py_module.name.text.camelCaseToSnakeCase()
-                let dest = (output + "\(module_name).py")
-                //            print("PyAstParser:",dest)
-                if !output.exists {
-                    try output.mkpath()
-                }
-                try dest.write(py_code, encoding: .utf8)
-                if !notoml {
-                    let toml_path = output + "../pyproject.toml"
-                    try toml_path.write(toml_file(name: module_name), encoding: .utf8)
-                }
-            }
-        }
-        
+//        
+//        func ____run() async throws {
+//            guard let output else { return }
+//            
+//            let decls = files.declSyntax()
+//            
+//            var py_classes = [ClassDeclSyntax]()
+//            var py_classes_ext = [ExtensionDeclSyntax]()
+//            var py_containers = [ClassDeclSyntax]()
+//            var py_modules = [StructDeclSyntax]()
+//            
+//            
+//            for decl in decls {
+//                switch decl.as(DeclSyntaxEnum.self) {
+//                    case .classDecl(let classDeclSyntax):
+//                        guard classDeclSyntax.isPyClass else { continue }
+//                        py_classes.append(classDeclSyntax)
+//                    case .extensionDecl(let extensionDeclSyntax):
+//                        guard extensionDeclSyntax.isPyClassExt else { continue }
+//                        py_classes_ext.append(extensionDeclSyntax)
+//                    case .structDecl(let structDeclSyntax):
+//                        guard structDeclSyntax.isPyModule else { continue }
+//                        py_modules.append(structDeclSyntax)
+//                    default:
+//                        continue
+//                }
+//            }
+//            
+//            guard let package_name = py_modules.first?.name.text.camelCaseToSnakeCase() else { return }
+//            
+//            for py_module in py_modules {
+//                var included_classes: [ClassDeclSyntax] = []
+//                var included_classes_ext: [ExtensionDeclSyntax] = []
+//                for member in py_module.memberBlock.members {
+//                    switch member.decl.as(DeclSyntaxEnum.self) {
+//                        case .variableDecl(let variableDecl):
+//                            if let binding = variableDecl.bindings.first {
+//                                switch binding.initializer?.value.as(ExprSyntaxEnum.self) {
+//                                    case .arrayExpr(let arrayExpr):
+//                                        switch binding.pattern.as(PatternSyntaxEnum.self) {
+//                                            case .expressionPattern(let expressionPattern):
+//                                                break
+//                                            case .identifierPattern(let identifierPattern):
+//                                                
+//                                                guard let infoKey = PyModuleInfoKey(rawValue: identifierPattern.identifier.trimmed.text) else {
+//                                                    break
+//                                                }
+//                                                
+//                                                switch infoKey {
+//                                                    case .py_classes:
+//                                                        let classes = arrayExpr.elements.compactMap { element in
+//                                                            switch element.expression.as(ExprSyntaxEnum.self) {
+//                                                                case .memberAccessExpr(let memberAccessExpr):
+//                                                                    switch memberAccessExpr.base?.as(ExprSyntaxEnum.self) {
+//                                                                        case .declReferenceExpr(let declReferenceExpr):
+//                                                                            return py_classes.first { cls in
+//                                                                                cls.name.trimmedDescription == declReferenceExpr.baseName.text
+//                                                                            }
+//                                                                        default: return nil
+//                                                                    }
+//                                                                default: return nil
+//                                                            }
+//                                                        }
+//                                                        included_classes.append(contentsOf: classes)
+//                                                        let classes_ext = arrayExpr.elements.compactMap { element in
+//                                                            switch element.expression.as(ExprSyntaxEnum.self) {
+//                                                                case .memberAccessExpr(let memberAccessExpr):
+//                                                                    switch memberAccessExpr.base?.as(ExprSyntaxEnum.self) {
+//                                                                        case .declReferenceExpr(let declReferenceExpr):
+//                                                                            return py_classes_ext.first { cls in
+//                                                                                cls.extendedType.trimmedDescription == declReferenceExpr.baseName.text
+//                                                                            }
+//                                                                        default: return nil
+//                                                                    }
+//                                                                default: return nil
+//                                                            }
+//                                                        }
+//                                                        included_classes_ext.append(contentsOf: classes_ext)
+//                                                    case .py_modules:
+//                                                        break
+//                                                    case .pyserializableTypes:
+//                                                        let pyserializableTypes: [PySerializableInfo] = arrayExpr.elements.compactMap { element in
+//                                                            switch element.expression.as(ExprSyntaxEnum.self) {
+//                                                                case .tupleExpr(let tupleExpr):
+//                                                                    let tElements = tupleExpr.elements.map(\.expression)
+//                                                                    if
+//                                                                        tElements.count == 2,
+//                                                                        let swiftType = tElements[0].as(MemberAccessExprSyntax.self)?.base?.trimmedDescription,
+//                                                                        let pyType = tElements[1].as(StringLiteralExprSyntax.self)?.segments.trimmedDescription
+//                                                                    {
+//                                                                        return .init(
+//                                                                            swiftType: swiftType,
+//                                                                            pyType: pyType
+//                                                                        )
+//                                                                    }
+//                                                                    break
+//                                                                default: break
+//                                                            }
+//                                                            return nil
+//                                                        }
+//                                                        pyserializableTypes.forEach(PySerializableFactory.registerType)
+//                                                }
+//                                            default: break
+//                                        }
+//                                    default: break
+//                                }
+//                            }
+//                            
+//                        default: break
+//                    }
+//                }
+//                
+//                let module = try PySwiftAST.Module(
+//                    syntax: py_module,
+//                    classes: included_classes,
+//                    classes_ext: included_classes_ext
+//                )
+////                let module = Generator.Module(
+////                    syntax: py_module,
+////                    classes: included_classes.filter(\.isPyClass),
+////                    classes_ext: included_classes_ext.filter(\.isPyClassExt)
+////                )
+//                let py_code = module.description.replacingOccurrences(of: "    ", with: "\t")
+//                //            let py_code = try Decompiler().decompile(ast: ast_module)
+//                let module_name = py_module.name.text.camelCaseToSnakeCase()
+//                let dest = (output + "\(module_name).py")
+//                //            print("PyAstParser:",dest)
+//                if !output.exists {
+//                    try output.mkpath()
+//                }
+//                try dest.write(disclaimed(py_code), encoding: .utf8)
+//                
+//            }
+//            if !notoml {
+//                let toml_path = output + "../pyproject.toml"
+//                try toml_path.write(toml_file(name: package_name), encoding: .utf8)
+//            }
+//        }
+//        
+//        
+//        func __run() async throws {
+//            guard let output else { return }
+//            
+//            let decls = files.declSyntax()
+//            
+//            let py_classes = decls.compactMap { decl in
+//                switch decl.as(DeclSyntaxEnum.self) {
+//                case .classDecl(let classDecl):
+//                    classDecl
+//                default: nil
+//                }
+//            }
+//            
+//            let py_classes_ext = decls.compactMap { decl in
+//                switch decl.as(DeclSyntaxEnum.self) {
+//                case .extensionDecl(let extensionDecl):
+//                    extensionDecl
+//                default: nil
+//                }
+//            }
+//            
+//            let py_modules = decls.compactMap { decl in
+//                switch decl.as(DeclSyntaxEnum.self) {
+//                case .structDecl(let structDecl):
+//                    structDecl
+//                default: nil
+//                }
+//            }
+//            
+//            
+//            
+//            
+//            for py_module in py_modules {
+//                var included_classes: [ClassDeclSyntax] = []
+//                var included_classes_ext: [ExtensionDeclSyntax] = []
+//                for member in py_module.memberBlock.members {
+//                    switch member.decl.as(DeclSyntaxEnum.self) {
+//                    case .variableDecl(let variableDecl):
+//                        if let binding = variableDecl.bindings.first {
+//                            switch binding.initializer?.value.as(ExprSyntaxEnum.self) {
+//                            case .arrayExpr(let arrayExpr):
+//                                switch binding.pattern.as(PatternSyntaxEnum.self) {
+//                                case .expressionPattern(let expressionPattern):
+//                                    break
+//                                case .identifierPattern(let identifierPattern):
+//                                    if identifierPattern.identifier.trimmed.text == "py_classes" {
+//                                        let classes = arrayExpr.elements.compactMap { element in
+//                                            switch element.expression.as(ExprSyntaxEnum.self) {
+//                                            case .memberAccessExpr(let memberAccessExpr):
+//                                                switch memberAccessExpr.base?.as(ExprSyntaxEnum.self) {
+//                                                case .declReferenceExpr(let declReferenceExpr):
+//                                                    return py_classes.first { cls in
+//                                                        cls.name.trimmedDescription == declReferenceExpr.baseName.text
+//                                                    }
+//                                                default: return nil
+//                                                }
+//                                            default: return nil
+//                                            }
+//                                        }
+//                                        included_classes.append(contentsOf: classes)
+//                                        let classes_ext = arrayExpr.elements.compactMap { element in
+//                                            switch element.expression.as(ExprSyntaxEnum.self) {
+//                                            case .memberAccessExpr(let memberAccessExpr):
+//                                                switch memberAccessExpr.base?.as(ExprSyntaxEnum.self) {
+//                                                case .declReferenceExpr(let declReferenceExpr):
+//                                                    return py_classes_ext.first { cls in
+//                                                        cls.extendedType.trimmedDescription == declReferenceExpr.baseName.text
+//                                                    }
+//                                                default: return nil
+//                                                }
+//                                            default: return nil
+//                                            }
+//                                        }
+//                                        included_classes_ext.append(contentsOf: classes_ext)
+//                                    }
+//                                default: break
+//                                }
+//                            default: break
+//                            }
+//                        }
+//                        
+//                    default: break
+//                    }
+//                }
+//                let module = Generator.Module(
+//                    syntax: py_module,
+//                    classes: included_classes.filter(\.isPyClass),
+//                    classes_ext: included_classes_ext.filter(\.isPyClassExt)
+//                )
+//                let py_code = module.description.replacingOccurrences(of: "    ", with: "\t")
+//                //            let py_code = try Decompiler().decompile(ast: ast_module)
+//                let module_name = py_module.name.text.camelCaseToSnakeCase()
+//                let dest = (output + "\(module_name).py")
+//                //            print("PyAstParser:",dest)
+//                if !output.exists {
+//                    try output.mkpath()
+//                }
+//                try dest.write(py_code, encoding: .utf8)
+//                if !notoml {
+//                    let toml_path = output + "../pyproject.toml"
+//                    try toml_path.write(toml_file(name: module_name), encoding: .utf8)
+//                }
+//            }
+//        }
+//        
     }
     
 }

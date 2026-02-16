@@ -3,7 +3,7 @@ import Foundation
 
 
 
-let fm = FileManager.default
+nonisolated(unsafe) let fm = FileManager.default
 
 extension String {
     var isTarget: Bool {
@@ -36,7 +36,7 @@ struct PyFileGenerator: CommandPlugin {
         if let firstArgument, firstArgument.notTarget {
             targetDir = URL(filePath: firstArgument)
         } else {
-            targetDir = URL(filePath: context.package.directory.string).appending(path: "src")
+            targetDir = context.package.directoryURL.appending(path: "src")
         }
         
         //let src = targetDir.appending(path: "src")
@@ -48,12 +48,12 @@ struct PyFileGenerator: CommandPlugin {
             for source in product.sourceModules {
                 
                 let swiftFiles = source.sourceFiles.compactMap { file in
-                    file.type == .source ? file.path.string : nil
+                    file.type == .source ? file.url.path() : nil
                 }
                 
                 
                 try await Process.GenerateModule(
-                    tool: .init(filePath: try context.tool(named: "Generator").path.string),
+                    tool: try context.tool(named: "Generator").url,
                     files: swiftFiles,
                     output: targetDir.path(),
                     notoml: notoml

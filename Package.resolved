@@ -1,4 +1,5 @@
 {
+  "originHash" : "c5bde8bad37c90375540de67b99aadd8a3186b56e5020ca31afa173f32c1b82e",
   "pins" : [
     {
       "identity" : "pathkit",
@@ -10,12 +11,21 @@
       }
     },
     {
+      "identity" : "pyswift2python",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Py-Swift/PySwift2Python",
+      "state" : {
+        "revision" : "aa5e96abdd25e7e049c524c4ff1909b3e60d344d",
+        "version" : "0.0.0"
+      }
+    },
+    {
       "identity" : "pyswiftast",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/Py-Swift/PySwiftAST",
       "state" : {
-        "branch" : "master",
-        "revision" : "9c6af68882d5d9f352bbba7b60baa16b717b0219"
+        "revision" : "ce91b58f89c8211329b6f4288c82e412779f40a7",
+        "version" : "0.0.0"
       }
     },
     {
@@ -64,5 +74,5 @@
       }
     }
   ],
-  "version" : 2
+  "version" : 3
 }
