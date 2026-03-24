@@ -19,13 +19,18 @@ let package = Package(
             name: "SetupPyGenerator",
             targets: ["SetupPyGenerator"]
         ),
+        .plugin(
+            name: "PyiFileGenerator",
+            targets: ["PyiFileGenerator"]
+        ),
     ],
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "601.0.0"),
         .package(url: "https://github.com/Py-Swift/PySwiftAST", from: .init(0, 0, 0)),
         .package(url: "https://github.com/kylef/PathKit", .upToNextMajor(from: "1.0.1")),
         .package(url: "https://github.com/apple/swift-argument-parser", from: .init(1, 2, 0)),
-        .package(url: "https://github.com/Py-Swift/PySwift2Python", from: .init(0, 0, 0))
+        //.package(url: "https://github.com/Py-Swift/PySwift2Python", from: .init(0, 0, 0))
+        .package(path: "../PySwift2Python")
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -78,6 +83,24 @@ let package = Package(
                 .product(name: "PyAstVisitors", package: "PySwiftAST"),
                 .product(name: "PyFormatters", package: "PySwiftAST"),
                 "PySwift2Python"
+            ]
+        ),
+        .plugin(
+            name: "PyiFileGenerator",
+            capability: .command(
+                intent: .custom(
+                    verb: "PyiFileGenerator",
+                    description: """
+                    Generates .pyi type stub files for each Swift product in the package.
+                    Invoked automatically by pyswiftkit-builder before wheel assembly.
+                    """
+                ),
+                permissions: [
+                    .writeToPackageDirectory(reason: "generates .pyi type stubs")
+                ]
+            ),
+            dependencies: [
+                "Generator"
             ]
         )
     ]

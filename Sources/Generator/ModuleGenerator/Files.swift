@@ -37,6 +37,9 @@ extension ModuleGenerator {
         @Argument var files: [Path]
         @Option var output: Path?
         @Flag(wrappedValue: false) var notoml: Bool
+        /// Write .pyi stub files instead of .py files.
+        /// Automatically implies --notoml (stubs never need a pyproject.toml).
+        @Flag(wrappedValue: false) var pyi: Bool
         
         func run() async throws {
             guard let output else { return }
@@ -47,14 +50,16 @@ extension ModuleGenerator {
                 return
             }
             
+            let ext = pyi ? "pyi" : "py"
             for file in handleFiles.outputs {
-                let dest = (output + "\(file.name).py")
+                let dest = (output + "\(file.name).\(ext)")
                 if !output.exists {
                     try output.mkpath()
                 }
                 try dest.write(disclaimed(file.content), encoding: .utf8)
             }
-            if !notoml {
+            // Never write pyproject.toml for .pyi stubs; respect --notoml otherwise
+            if !notoml && !pyi {
                 let toml_path = output + "../pyproject.toml"
                 try toml_path.write(toml_file(name: package_name), encoding: .utf8)
             }

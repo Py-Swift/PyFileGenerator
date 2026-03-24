@@ -1,5 +1,5 @@
 {
-  "originHash" : "c5bde8bad37c90375540de67b99aadd8a3186b56e5020ca31afa173f32c1b82e",
+  "originHash" : "0b55caa1a548c2152a32a95b437fe0e74528ea41ec38d9c4b4a739fae4c78432",
   "pins" : [
     {
       "identity" : "pathkit",
@@ -8,15 +8,6 @@
       "state" : {
         "revision" : "3bfd2737b700b9a36565a8c94f4ad2b050a5e574",
         "version" : "1.0.1"
-      }
-    },
-    {
-      "identity" : "pyswift2python",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/Py-Swift/PySwift2Python",
-      "state" : {
-        "revision" : "aa5e96abdd25e7e049c524c4ff1909b3e60d344d",
-        "version" : "0.0.0"
       }
     },
     {
